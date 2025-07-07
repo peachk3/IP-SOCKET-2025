@@ -374,7 +374,6 @@ sleep(10); 주석 처리시
 -> 스레드 실행 X 
 
 
-
 thread4.c
 스레드 1의 연산결과를 저장하기 전에 
 스레드 2가 num에 접근해 연산을 시행함!!!
@@ -440,6 +439,7 @@ webpage 배열을 전송하는 웹서버를 구현하시오
     "<img src=\"Dog.jpg\"></center></body></html>\r\n"
     };
 ```
+
 <img src="./image/test.png" width="600">
 
 - 전체 동작 흐름
