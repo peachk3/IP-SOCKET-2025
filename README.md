@@ -355,4 +355,107 @@ setsocket(sock, SOL_SOCKET, SO_BROADCAST, &flag, sizeof(flaf):
 
 ## 6일차
 ### 스레드
-- 프로세스 안의 자원 활용 - (stack 생성)
+- 프로세스 내에서 실제로 작업을 수행하는 최소 단위
+- 프로세스 안의 자원 활용 - (별도의 영역 가짐 -> stack 생성/코드, 힙, 데이터는 공유)
+- 장점
+    1. 성능 향상 (병렬 처리 가능)
+    2. 자원 공유 용이 (메모리 공유)
+    3. 빠른 생성/종료 (프로세스보다 가벼움)
+- 단점
+    1. 동기화 문제 발생 (데이터 충돌)
+        -> Mutex, Semaphore, Lock 동기화 도구 사용
+    2. 디버깅 어려움
+
+
+```C
+
+```
+sleep(10); 주석 처리시
+-> 스레드 실행 X 
+
+
+
+thread4.c
+스레드 1의 연산결과를 저장하기 전에 
+스레드 2가 num에 접근해 연산을 시행함!!!
+=> 0이 나오지 않음
+-> 연산결과를 저장한 다음에 스레드 2가 연산을 시작하고 해야 정상적인 동작 가능!!
+=> num에 접근할 수 있는 키 부여, 키를 부여한 스레드만 접근할 수 있도록 함(**동기화**-접근 순서를 만든것)
+
+#### 동기화(자원 접근 제어)
+- Mutex(Mutual Exclusion)
+    - 오직 하나의 스레드만 자원을 사용할 수 있도록 잠금을 거는 방식
+    -> 스레드 간 충돌 막음
+- Semaphore
+    - 일정 개수만큼의 스레드가 자원을 사용할 수 있게 허용
+    -> 제한된 수의 자원을 여러 스레드가 나눠 쓰게 조절
+
+- 세마포어 필요 이유
+    - accu()스레드가 num을 사용하기 전에 아직 입력이 안 되었을 수도 있음 -> 쓰레기 값 사용 위험
+    - read()가 새로운 num을 입력할 때 accu()가 아직 안 읽었으면 덮어쓰기 문제
+    => 순서를 제어해 문제 해결해줌
+
+
+```C
+#include <semaphore.h>
+
+int sem_init(sem_t *sem, int pshared, unsigned int value);
+
+// ---------- 예제
+sem_t sem_one;
+sem_init(&sem_one, 0, 1);  // 스레드 간 공유, 초기 자원 1개
+
+sem_destroy(&sem_one); // 메모리 누수를 막기 위해 해제 해야 함
+
+```
+
+- sem : 초기화할 세마포어 변수의 주소 (ex &sem_one)
+- pshared : 0이면 스레드 간 공유, 0이 아니면 프로세스 간 공유
+    - 0 : 같은 프로레스의 스레드기리 공유할 때 사용
+    - 1 : 다른 프로세스끼리 공유
+- value : 세마포어의 초기 값(즉, 자원의 개수)
+    - 0 : 대기 상태로 시작(자원이 없음)
+    - 1 : 바이너리 세마포어처럼 사용(뮤텍스처럼)
+    - N : 자원이 N개 있는 카운팅 세마포어
+
+- 예제 해석
+    - sem_one : 1개의 자원을 가진 세마포어
+    - sem_wait(&sem_one) : 첫번째 스레드는 통과, 두번째 스레드는 첫번째가 sem_post()하기 전까지 대기
+
+
+#### 코딩테스트
+webpage 배열을 전송하는 웹서버를 구현하시오
+    - 클라이언트 인터넷 브라우저로 서버 접속 -> HTTP request 형식의 메시지로 서버에 전달
+        => GET/POST 요청 방식에 따른 서버 동작
+```C
+    char webpage[] = {
+    "HTTP/1.1 200 OK\r\n",
+    "Server:Linux Web Server\r\n",
+    "Content-Type: text/html; charset=UTF-8\r\n",
+    "\r\n",
+    "<!DOCTYPE html>\r\n",
+    "<html><head><title>My Web Page</title>\r\n",
+    "<style>body{background-color: #FFF000 } </style></head>\r\n",
+    "<body><center><h1>Hello World!</h1><br>\r\n",
+    "<img src=\"Dog.jpg\"></center></body></html>\r\n"
+    };
+```
+<img src="./image/test.png" width="600">
+
+- 전체 동작 흐름
+1. 서버 시작 : 소켓 생성 -> 주소 바인딩 -> 리슨 상태
+2. 클라이언트 연결 : 브라우저가 http://localhost:9090 접속
+3. 요청 수신 : 클라이언트의 http 요청 받기
+4. 요청 분석 
+    - `GET /`  -> HTML 페이지 전송
+    - `GET /Dog.jpg` -> 이미지 파일 전송
+5. 응답 전송 : 해당하는 데이터 전송
+6. 연결 종료 : 응답 완료 후 연결 종료
+7. 반복 : 다음 클라이언트 연결 대기
+
+- 중요 개념
+1. TCP 3-way Handshake
+    - 서버의 accept()와 클라이언트의 connect() 사이에 일어나는 연결 과정
+2. 바이너리 vs 텍스트 전송
+    - HTML : 텍스트로 전송
+    - 이미지 : 바이너리로 전송(Content-Type:image/jpeg)
